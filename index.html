@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>E-Library Cabinet</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-dark: #140d09;
+      --wood-dark: #25170f;
+      --wood-mid: #3a2315;
+      --wood-plank: linear-gradient(180deg, #6d4324 0%, #482913 55%, #2b170a 100%);
+      --gold: #e8b86d;
+      --gold-soft: rgba(232, 184, 109, 0.16);
+      --cream: #f7ebd9;
+      --muted: #bfa98e;
+      --card-bg: linear-gradient(145deg, #2e1d13 0%, #1d120c 100%);
+      --border: rgba(232, 184, 109, 0.22);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pyidaungsu", "Noto Sans Myanmar", Roboto, sans-serif;
+      background: radial-gradient(circle at top, #281910 0%, var(--bg-dark) 75%);
+      color: var(--cream);
+      min-height: 100vh;
+      padding-bottom: 36px;
+    }
+    .header {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(20, 13, 9, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 14px 10px;
+    }
+    .top-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .brand-title {
+      font-size: 16px; font-weight: 700; color: var(--gold); line-height: 1.2;
+    }
+    .brand-sub {
+      font-size: 11px; color: var(--muted);
+    }
+    .lang-toggle {
+      display: flex; background: var(--wood-dark); border: 1px solid var(--border);
+      border-radius: 999px; padding: 2px;
+    }
+    .lang-btn {
+      border: none; background: transparent; color: var(--muted);
+      font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+    }
+    .lang-btn.active {
+      background: var(--gold); color: #1a1009;
+    }
+    .search-wrap {
+      position: relative; display: flex; align-items: center;
+    }
+    .search-input {
+      width: 100%; padding: 10px 36px 10px 36px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: var(--wood-dark); color: var(--cream);
+      font-size: 14px; outline: none;
+    }
+    .search-input::placeholder { color: #8c755d; }
+    .search-input:focus { border-color: var(--gold); }
+    .search-icon { position: absolute; left: 12px; font-size: 14px; opacity: 0.7; }
+    .clear-btn {
+      position: absolute; right: 10px; border: none; background: transparent;
+      color: var(--muted); font-size: 15px; cursor: pointer; display: none;
+    }
+    .tabs {
+      display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px 4px;
+      scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 0 0 auto; border: 1px solid var(--border); background: var(--wood-dark);
+      color: var(--muted); padding: 8px 13px; border-radius: 10px;
+      font-size: 12.5px; font-weight: 600; cursor: pointer;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #e8b86d, #c8913f);
+      color: #190f08; border-color: transparent;
+    }
+    .container { padding: 8px 12px; max-width: 780px; margin: 0 auto; }
+    .section-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 8px 2px 10px; gap: 8px;
+    }
+    .section-title { font-size: 14px; font-weight: 700; color: var(--gold); }
+    .back-btn {
+      border: 1px solid var(--border); background: var(--wood-mid); color: var(--cream);
+      padding: 6px 11px; border-radius: 8px; font-size: 12px; cursor: pointer;
+    }
+    .alpha-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-bottom: 14px;
+    }
+    .alpha-pill {
+      background: var(--wood-dark); border: 1px solid var(--border);
+      color: var(--cream); border-radius: 10px; padding: 9px 4px;
+      text-align: center; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    .alpha-pill span { display: block; font-size: 10px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+    .alpha-pill.active, .alpha-pill:active {
+      background: var(--gold-soft); border-color: var(--gold); color: var(--gold);
+    }
+    .drawer-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    }
+    .author-drawer {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-left: 4px solid var(--gold);
+      border-radius: 10px; padding: 11px 10px; cursor: pointer;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    }
+    .author-name { font-size: 13.5px; font-weight: 700; color: var(--cream); line-height: 1.35; }
+    .author-count { font-size: 11px; color: var(--gold); margin-top: 5px; }
+
+    /* Wooden Library Shelf Row */
+    .cabinet-frame {
+      background: #1a100a; border: 2px solid #4d2e17; border-radius: 14px;
+      padding: 12px 10px 6px; box-shadow: inset 0 0 24px rgba(0,0,0,0.75);
+    }
+    .shelf-row { margin-bottom: 14px; }
+    .shelf-books {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; padding: 0 4px;
+    }
+    .shelf-plank {
+      height: 11px; margin-top: 6px; border-radius: 3px;
+      background: var(--wood-plank);
+      box-shadow: 0 6px 10px rgba(0,0,0,0.65);
+    }
+    .book-card {
+      position: relative;
+      background: linear-gradient(155deg, #352216 0%, #20130c 100%);
+      border: 1px solid rgba(232, 184, 109, 0.28);
+      border-radius: 8px 10px 10px 8px;
+      padding: 10px 10px 10px 14px;
+      cursor: pointer;
+      display: flex; flex-direction: column; justify-content: space-between;
+      min-height: 98px;
+      box-shadow: 2px 4px 10px rgba(0,0,0,0.45);
+      transition: transform 0.12s ease;
+    }
+    .book-card:active { transform: scale(0.97); }
+    .book-spine {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+      border-radius: 8px 0 0 8px;
+    }
+    .book-no { font-size: 10px; color: var(--gold); font-weight: 700; margin-bottom: 4px; }
+    .book-title {
+      font-size: 12.8px; font-weight: 700; color: #fff6e8;
+      line-height: 1.38; word-break: break-word;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .book-author {
+      font-size: 10.8px; color: var(--muted); margin-top: 6px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .book-read {
+      margin-top: 7px; font-size: 11px; font-weight: 700; color: var(--gold);
+    }
+    .load-more-btn {
+      display: block; width: 100%; margin: 14px 0 6px; padding: 11px;
+      border-radius: 10px; border: 1px solid var(--gold);
+      background: var(--gold-soft); color: var(--gold);
+      font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .status-box {
+      text-align: center; padding: 36px 16px; color: var(--muted); font-size: 13.5px; line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="top-row">
+      <div class="brand">
+        <div style="font-size:24px;">🏛</div>
+        <div>
+          <div class="brand-title" id="brandTitle">စာကြည့်တိုက် ဗီရို</div>
+          <div class="brand-sub" id="brandSub">Loading books...</div>
+        </div>
+      </div>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btnMy" onclick="setLang('my')">🇲🇲 မြန်မာ</button>
+        <button class="lang-btn" id="btnEn" onclick="setLang('en')">🇬🇧 EN</button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" class="search-input" type="text" placeholder="စာအုပ်နာမည် (သို့) စာရေးဆရာ ရှာရန်..." />
+      <button id="clearBtn" class="clear-btn" onclick="clearSearch()">✕</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabsBar">
+    <button class="tab-btn active" data-tab="featured" onclick="switchTab('featured')" id="tabFeatured">🌟 နာမည်ကြီးများ</button>
+    <button class="tab-btn" data-tab="mm" onclick="switchTab('mm')" id="tabMm">🇲🇲 မြန်မာ (က-အ)</button>
+    <button class="tab-btn" data-tab="en" onclick="switchTab('en')" id="tabEn">🇬🇧 English (A-Z)</button>
+    <button class="tab-btn" data-tab="unk_mm" onclick="switchTab('unk_mm')" id="tabUnkMm">📂 မြန်မာ (အထွေထွေ)</button>
+    <button class="tab-btn" data-tab="unk_en" onclick="switchTab('unk_en')" id="tabUnkEn">📂 English General</button>
+  </div>
+
+  <div class="container" id="mainContainer">
+    <div class="status-box" id="loadingBox">📚 စာကြည့်တိုက် ဖွင့်နေပါသည်...</div>
+  </div>
+
+  <script>
+    // ⚠️ ဤနေရာတွင် သင့် Bot ၏ Telegram Username (@ မပါဘဲ) ထည့်ပါ
+    const BOT_USERNAME = "myanmarpdfbooks_bot";
+
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    const MM_LETTERS = [
+      "က","ခ","ဂ","ဃ","င","စ","ဆ","ဇ","ဈ","ဉ","ည",
+      "ဋ","ဌ","ဍ","ဎ","ဏ","တ","ထ","ဒ","ဓ","န",
+      "ပ","ဖ","ဗ","ဘ","မ","ယ","ရ","လ","ဝ","သ","ဟ","ဠ","အ","ဥ-ဩ"
+    ];
+    const FEATURED_AUTHORS = [
+      "ချစ်ဦးညို", "မြသန်းတင့်", "တာရာမင်းဝေ", "မင်းလူ", "ပုညခင်",
+      "သိုးဆောင်း", "ဂျူး", "ဖေမြင့်", "ခင်နှင်းယု", "ရွှေဥဒေါင်း",
+      "မင်းသိင်္ခ", "တက္ကသိုလ်ဘုန်းနိုင်", "နိုင်းနိုင်းစနေ", "အကြည်တော်",
+      "လွန်းထားထား", "ခင်ခင်ထူး", "DK", "New Scientist", "Yuval Noah Harari", "How It Works"
+    ];
+    const SPINE_COLORS = ["#c85a32", "#2d7d6f", "#b0842c", "#5b62a8", "#913b4b", "#3f7a4c", "#7e538d"];
+
+    const I18N = {
+      my: {
+        title: "စာကြည့်တိုက် ဗီရို",
+        sub: (n, a) => `စာအုပ် ${n.toLocaleString()} အုပ် • စာရေးဆရာ ${a.toLocaleString()} ဦး`,
+        searchPh: "စာအုပ်နာမည် (သို့) စာရေးဆရာ ရှာရန်...",
+        tabFeatured: "🌟 နာမည်ကြီးများ",
+        tabMm: "🇲🇲 မြန်မာ (က-အ)",
+        tabEn: "🇬🇧 English (A-Z)",
+        tabUnkMm: "📂 မြန်မာ (အထွေထွေ)",
+        tabUnkEn: "📂 English General",
+        featuredHead: "🌟 နာမည်ကြီး စာရေးဆရာ စင်များ",
+        chooseLetterMm: "🇲🇲 စာရေးဆရာ အက္ခရာ ရွေးချယ်ပါ",
+        chooseLetterEn: "🇬🇧 English Author A-Z ရွေးချယ်ပါ",
+        authorsWith: (ch, c) => `✍️ '${ch}' စာရေးဆရာများ (${c} ဦး)`,
+        booksCount: (c) => `${c.toLocaleString()} အုပ်`,
+        readBtn: "📖 ရွေးဖတ်မည်",
+        backLetters: "🔙 အက္ခရာသို့",
+        backAuthors: "🔙 စာရေးဆရာသို့",
+        loadMore: (rem) => `📚 နောက်ထပ်စာအုပ်များ ထပ်ကြည့်ရန် (${rem} အုပ်ကျန်)`,
+        searchRes: (q, c) => `🔍 '${q}' ရှာတွေ့မှု (${c.toLocaleString()} အုပ်)`,
+        notFound: "❌ ရှာဖွေနေသော စာအုပ် မတွေ့ရှိပါ။",
+        unkMmTitle: "📂 စာရေးဆရာမသိ မြန်မာစာအုပ်များ",
+        unkEnTitle: "📂 Other English Books (Unknown Author)",
+        unknownLabel: "Unknown",
+        warnBot: "index.html ထဲတွင် BOT_USERNAME ကို သင့် Bot Username ဖြင့် အစားထိုးပေးပါ!"
+      },
+      en: {
+        title: "Digital E-Library Cabinet",
+        sub: (n, a) => `${n.toLocaleString()} Books • ${a.toLocaleString()} Authors`,
+        searchPh: "Search book title or author...",
+        tabFeatured: "🌟 Featured",
+        tabMm: "🇲🇲 Myanmar (က-အ)",
+        tabEn: "🇬🇧 English (A-Z)",
+        tabUnkMm: "📂 Myanmar General",
+        tabUnkEn: "📂 English General",
+        featuredHead: "🌟 Popular Author Shelves",
+        chooseLetterMm: "🇲🇲 Select Myanmar Starting Letter",
+        chooseLetterEn: "🇬🇧 Select English Letter (A - Z)",
+        authorsWith: (ch, c) => `✍️ Authors starting with '${ch}' (${c})`,
+        booksCount: (c) => `${c.toLocaleString()} books`,
+        readBtn: "📖 Read PDF",
+        backLetters: "🔙 Letters",
+        backAuthors: "🔙 Authors",
+        loadMore: (rem) => `📚 Load More Books (${rem} left)`,
+        searchRes: (q, c) => `🔍 Results for '${q}' (${c.toLocaleString()})`,
+        notFound: "❌ No matching books found.",
+        unkMmTitle: "📂 Myanmar General Books",
+        unkEnTitle: "📂 Other English Books",
+        unknownLabel: "Unknown",
+        warnBot: "Please replace BOT_USERNAME in index.html with your real Telegram bot username!"
+      }
+    };
+
+    let lang = "my";
+    let catalog = null;
+    let authorBucketsMm = {};
+    let authorBucketsEn = {};
+    let authorBookCounts = [];
+    let currentTab = "featured";
+    let selectedLetter = null;
+    let selectedAuthorIdx = null;
+    let currentBooksList = [];
+    let visibleLimit = 40;
+    let searchTimer = null;
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function getMmBucket(name) {
+      if (!name) return null;
+      const ch = name.trim()[0];
+      if ("ဣဤဥဦဧဩဪ".includes(ch)) return "ဥ-ဩ";
+      return MM_LETTERS.includes(ch) ? ch : null;
+    }
+
+    function setLang(l) {
+      lang = l;
+      document.getElementById("btnMy").classList.toggle("active", l === "my");
+      document.getElementById("btnEn").classList.toggle("active", l === "en");
+      const t = I18N[lang];
+      document.getElementById("brandTitle").textContent = t.title;
+      document.getElementById("searchInput").placeholder = t.searchPh;
+      document.getElementById("tabFeatured").textContent = t.tabFeatured;
+      document.getElementById("tabMm").textContent = t.tabMm;
+      document.getElementById("tabEn").textContent = t.tabEn;
+      document.getElementById("tabUnkMm").textContent = t.tabUnkMm;
+      document.getElementById("tabUnkEn").textContent = t.tabUnkEn;
+      if (catalog) {
+        document.getElementById("brandSub").textContent = t.sub(catalog.books.length, catalog.authors.length);
+        renderCurrentView();
+      }
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      selectedLetter = null;
+      selectedAuthorIdx = null;
+      visibleLimit = 40;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+      renderCurrentView();
+    }
+
+    function clearSearch() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("clearBtn").style.display = "none";
+      visibleLimit = 40;
+      renderCurrentView();
+    }
+
+    function openBook(bookId) {
+      if (!BOT_USERNAME || BOT_USERNAME === "YOUR_BOT_USERNAME") {
+        alert(I18N[lang].warnBot);
+        return;
+      }
+      const url = `https://t.me/${BOT_USERNAME}?start=book_${bookId}`;
+      if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink(url);
+        setTimeout(() => tg.close(), 250);
+      } else {
+        window.open(url, "_blank");
+      }
+    }
+
+    function renderShelfBooks(books, headerTitle, backHtml = "") {
+      const t = I18N[lang];
+      currentBooksList = books;
+      const slice = books.slice(0, visibleLimit);
+      let html = `<div class="section-bar"><div class="section-title">${esc(headerTitle)}</div>${backHtml}</div>`;
+
+      if (!books.length) {
+        html += `<div class="status-box">${t.notFound}</div>`;
+        document.getElementById("mainContainer").innerHTML = html;
+        return;
+      }
+
+      html += `<div class="cabinet-frame">`;
+      for (let i = 0; i < slice.length; i += 2) {
+        html += `<div class="shelf-row"><div class="shelf-books">`;
+        for (let j = i; j < i + 2 && j < slice.length; j++) {
+          const b = slice[j];
+          const [id, title, aIdx] = b;
+          const authorName = aIdx >= 0 ? catalog.authors[aIdx] : t.unknownLabel;
+          const color = SPINE_COLORS[(j + id) % SPINE_COLORS.length];
+          html += `
+            <div class="book-card" onclick="openBook(${id})">
+              <div class="book-spine" style="background:${color};"></div>
+              <div>
+                <div class="book-no">#${j + 1}</div>
+                <div class="book-title">${esc(title)}</div>
+              </div>
+              <div>
+                <div class="book-author">✍️ ${esc(authorName)}</div>
+                <div class="book-read">${t.readBtn}</div>
+              </div>
+            </div>`;
+        }
+        html += `</div><div class="shelf-plank"></div></div>`;
+      }
+      html += `</div>`;
+
+      if (books.length > visibleLimit) {
+        const rem = books.length - visibleLimit;
+        html += `<button class="load-more-btn" onclick="loadMoreBooks()">${t.loadMore(rem)}</button>`;
+      }
+      document.getElementById("mainContainer").innerHTML = html;
+    }
+
+    function loadMoreBooks() {
+      visibleLimit += 40;
+      const q = document.getElementById("searchInput").value.trim();
+      if (q) {
+        renderSearch(q);
+      } else {
+        renderCurrentView();
+      }
+    }
+
+    function selectAuthor(aIdx) {
+      selectedAuthorIdx = aIdx;
+      visibleLimit = 40;
+      renderCurrentView();
+    }
+
+    function selectLetter(ch) {
+      selectedLetter = ch;
+      selectedAuthorIdx = null;
+      renderCurrentView();
+    }
+
+    function renderAuthorDrawers(authorIdxs, titleText, backBtnHtml) {
+      const t = I18N[lang];
+      let html = `<div class="section-bar"><div class="section-title">${esc(titleText)}</div>${backBtnHtml}</div>`;
+      html += `<div class="drawer-grid">`;
+      for (const idx of authorIdxs) {
+        const name = catalog.authors[idx];
+        const cnt = authorBookCounts[idx] || 0;
+        html += `
+          <div class="author-drawer" onclick="selectAuthor(${idx})">
+            <div class="author-name">✍️ ${esc(name)}</div>
+            <div class="author-count">📚 ${t.booksCount(cnt)}</div>
+          </div>`;
+      }
+      html += `</div>`;
+      document.getElementById("mainContainer").innerHTML = html;
+    }
+
+    function renderSearch(query) {
+      const t = I18N[lang];
+      const q = query.toLowerCase();
+      const hits = [];
+      for (const b of catalog.books) {
+        const title = b[1];
+        const aName = b[2] >= 0 ? catalog.authors[b[2]] : "";
+        if (title.toLowerCase().includes(q) || aName.toLowerCase().includes(q)) {
+          hits.push(b);
+        }
+      }
+      renderShelfBooks(hits, t.searchRes(query, hits.length));
+    }
+
+    function renderCurrentView() {
+      const t = I18N[lang];
+      const q = document.getElementById("searchInput").value.trim();
+      if (q) {
+        renderSearch(q);
+        return;
+      }
+
+      if (selectedAuthorIdx !== null) {
+        const aName = catalog.authors[selectedAuthorIdx];
+        const books = catalog.books.filter(b => b[2] === selectedAuthorIdx);
+        const backFn = currentTab === "featured" ? "selectedAuthorIdx=null;renderCurrentView()" : "selectedAuthorIdx=null;renderCurrentView()";
+        renderShelfBooks(books, `✍️ ${aName} (${t.booksCount(books.length)})`, `<button class="back-btn" onclick="${backFn}">${t.backAuthors}</button>`);
+        return;
+      }
+
+      if (currentTab === "featured") {
+        const idxs = [];
+        for (const fa of FEATURED_AUTHORS) {
+          const i = catalog.authors.indexOf(fa);
+          if (i !== -1) idxs.push(i);
+        }
+        renderAuthorDrawers(idxs, t.featuredHead, "");
+      } else if (currentTab === "mm") {
+        if (selectedLetter) {
+          const idxs = authorBucketsMm[selectedLetter] || [];
+          renderAuthorDrawers(idxs, t.authorsWith(selectedLetter, idxs.length), `<button class="back-btn" onclick="selectLetter(null)">${t.backLetters}</button>`);
+        } else {
+          let html = `<div class="section-bar"><div class="section-title">${t.chooseLetterMm}</div></div><div class="alpha-grid">`;
+          for (const ch of MM_LETTERS) {
+            const list = authorBucketsMm[ch];
+            if (list && list.length) {
+              html += `<div class="alpha-pill" onclick="selectLetter('${ch}')">${ch}<span>${list.length}</span></div>`;
+            }
+          }
+          html += `</div>`;
+          document.getElementById("mainContainer").innerHTML = html;
+        }
+      } else if (currentTab === "en") {
+        if (selectedLetter) {
+          const idxs = authorBucketsEn[selectedLetter] || [];
+          renderAuthorDrawers(idxs, t.authorsWith(selectedLetter, idxs.length), `<button class="back-btn" onclick="selectLetter(null)">${t.backLetters}</button>`);
+        } else {
+          let html = `<div class="section-bar"><div class="section-title">${t.chooseLetterEn}</div></div><div class="alpha-grid">`;
+          for (const ch of Object.keys(authorBucketsEn).sort()) {
+            const list = authorBucketsEn[ch];
+            html += `<div class="alpha-pill" onclick="selectLetter('${ch}')">${ch}<span>${list.length}</span></div>`;
+          }
+          html += `</div>`;
+          document.getElementById("mainContainer").innerHTML = html;
+        }
+      } else if (currentTab === "unk_mm") {
+        const books = catalog.books.filter(b => b[3] === 2);
+        renderShelfBooks(books, `${t.unkMmTitle} (${t.booksCount(books.length)})`);
+      } else if (currentTab === "unk_en") {
+        const books = catalog.books.filter(b => b[3] === 3);
+        renderShelfBooks(books, `${t.unkEnTitle} (${t.booksCount(books.length)})`);
+      }
+    }
+
+    document.getElementById("searchInput").addEventListener("input", (e) => {
+      const val = e.target.value;
+      document.getElementById("clearBtn").style.display = val ? "block" : "none";
+      visibleLimit = 40;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => renderCurrentView(), 140);
+    });
+
+    async function init() {
+      try {
+        const res = await fetch("./catalog.json");
+        if (!res.ok) throw new Error("catalog.json not found");
+        catalog = await res.json();
+        authorBookCounts = new Array(catalog.authors.length).fill(0);
+        for (const b of catalog.books) {
+          if (b[2] >= 0) authorBookCounts[b[2]]++;
+        }
+        catalog.authors.forEach((name, idx) => {
+          if (/^[\x00-\x7F]+$/.test(name)) {
+            const ch = name.trim()[0].toUpperCase();
+            if (ch >= "A" && ch <= "Z") {
+              (authorBucketsEn[ch] = authorBucketsEn[ch] || []).push(idx);
+            }
+          } else {
+            const b = getMmBucket(name);
+            if (b) (authorBucketsMm[b] = authorBucketsMm[b] || []).push(idx);
+          }
+        });
+        setLang("my");
+      } catch (err) {
+        document.getElementById("mainContainer").innerHTML =
+          `<div class="status-box">❌ catalog.json ဖွင့်မရပါ (${esc(err.message)})</div>`;
+      }
+    }
+    init();
+  </script>
+</body>
+</html>
