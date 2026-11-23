@@ -523,7 +523,7 @@
 
     async function init() {
       try {
-        const res = await fetch("./catalog.json");
+        const res = await fetch("./catalog.json?v=" + Date.now(), { cache: "no-store" });
         if (!res.ok) throw new Error("catalog.json not found");
         catalog = await res.json();
         authorBookCounts = new Array(catalog.authors.length).fill(0);
